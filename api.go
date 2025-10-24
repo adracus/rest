@@ -161,7 +161,7 @@ func (api *API) Merge(r Route) {
 	toUpdate := api.Route(string(r.Method), string(r.Pattern))
 	mergeMap(toUpdate.Params.Path, r.Params.Path)
 	mergeMap(toUpdate.Params.Query, r.Params.Query)
-	if toUpdate.Models.Request.Type == nil {
+	if toUpdate.Models.Request.Model.Type == nil {
 		toUpdate.Models.Request = r.Models.Request
 	}
 	mergeMap(toUpdate.Models.Responses, r.Models.Responses)
@@ -264,11 +264,41 @@ func (rm *Route) HasResponseModel(status int, response Model) *Route {
 	return rm
 }
 
-// HasResponseModel configures the request model of the route.
+type HasRequestModelOptions struct {
+	Required bool
+}
+
+func (o *HasRequestModelOptions) ApplyOptions(opts []HasRequestModelOption) *HasRequestModelOptions {
+	for _, opt := range opts {
+		opt.ApplyToHasRequestModel(o)
+	}
+	return o
+}
+
+type HasRequestModelOption interface {
+	ApplyToHasRequestModel(*HasRequestModelOptions)
+}
+
+// Required is an option that marks something as required or not.
+type Required bool
+
+func (r Required) ApplyToHasRequestModel(opt *HasRequestModelOptions) {
+	opt.Required = bool(r)
+}
+
+// IsRequired is an option that marks something as required.
+var IsRequired Required = true
+
+// HasRequestModel configures the request model of the route.
 // Example:
 //
 //	api.Post("/user").HasRequestModel(http.StatusOK, rest.ModelOf[User]())
-func (rm *Route) HasRequestModel(request Model) *Route {
+func (rm *Route) HasRequestModel(model Model, opts ...HasRequestModelOption) *Route {
+	o := (&HasRequestModelOptions{}).ApplyOptions(opts)
+	request := Request{
+		Model:    model,
+		Required: o.Required,
+	}
 	rm.Models.Request = request
 	return rm
 }
@@ -305,8 +335,13 @@ func (rm *Route) HasDescription(description string) *Route {
 
 // Models defines the models used by a route.
 type Models struct {
-	Request   Model
+	Request   Request
 	Responses map[int]Model
+}
+
+type Request struct {
+	Model    Model
+	Required bool
 }
 
 // ModelOf creates a model of type T.

@@ -106,17 +106,19 @@ func (api *API) createOpenAPI() (spec *openapi3.T, err error) {
 			}
 
 			// Handle request types.
-			if route.Models.Request.Type != nil {
-				name, schema, err := api.RegisterModel(route.Models.Request)
+			if route.Models.Request.Model.Type != nil {
+				name, schema, err := api.RegisterModel(route.Models.Request.Model)
 				if err != nil {
 					return spec, err
 				}
 				op.RequestBody = &openapi3.RequestBodyRef{
-					Value: openapi3.NewRequestBody().WithContent(map[string]*openapi3.MediaType{
-						"application/json": {
-							Schema: getSchemaReferenceOrValue(name, schema),
-						},
-					}),
+					Value: openapi3.NewRequestBody().
+						WithRequired(route.Models.Request.Required).
+						WithContent(map[string]*openapi3.MediaType{
+							"application/json": {
+								Schema: getSchemaReferenceOrValue(name, schema),
+							},
+						}),
 				}
 			}
 
